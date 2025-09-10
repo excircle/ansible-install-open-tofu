@@ -1,0 +1,9 @@
+---
+- name: Include OS Family Relevant Tasks
+  ansible.builtin.include_tasks:
+    file: "install/{{ ansible_os_family }}.yaml"
+  when: perform_base_install
+  
+- name: Open-Tofu Base Install
+  ansible.builtin.include_tasks:
+    file: "01-open-tofu-install.yaml"

@@ -1,0 +1,33 @@
+---
+- name: Installing Debian dependencies for apt
+  ansible.builtin.apt:
+    name:
+      - gpg
+      - vim
+      - git
+      - wget
+      - runc
+      - curl
+      - socat
+      - conntrack
+      - apt-transport-https
+      - software-properties-common
+      - lsb-release
+      - ca-certificates
+      - htop
+      - tree
+      - net-tools
+      - mlocate
+      - bash-completion
+    state: present
+    update_cache: true
+  when:
+    - ansible_os_family == 'Debian'
+
+- name: Display system architecture
+  ansible.builtin.debug:
+    var: ansible_architecture
+
+- name: Display release codename
+  ansible.builtin.debug:
+    var: ansible_distribution_release

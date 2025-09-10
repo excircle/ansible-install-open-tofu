@@ -1,0 +1,95 @@
+---
+- name: Gather facts about the host
+  ansible.builtin.setup:
+
+- name: Update apt package list
+  ansible.builtin.apt:
+    update_cache: yes
+  when: ansible_os_family == "Debian"
+  become: yes
+
+- name: Install required packages for OpenTofu repository
+  ansible.builtin.apt:
+    name:
+      - apt-transport-https
+      - ca-certificates
+      - gnupg
+      - curl
+    state: present
+  when: ansible_os_family == "Debian"
+  become: yes
+
+- name: Create /etc/apt/keyrings directory
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: '0755'
+  when: ansible_os_family == "Debian"
+  become: yes
+
+- name: Remove existing OpenTofu GPG keys if present
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /etc/apt/keyrings/opentofu.gpg
+    - /etc/apt/keyrings/opentofu-repo.gpg
+  when: ansible_os_family == "Debian"
+  become: yes
+  tags: clean_gpg
+
+- name: Download and process OpenTofu GPG key
+  ansible.builtin.shell: |
+    curl -fsSL https://get.opentofu.org/opentofu.gpg | gpg --batch --yes --dearmor -o /etc/apt/keyrings/opentofu.gpg
+    chmod 644 /etc/apt/keyrings/opentofu.gpg
+    chown root:root /etc/apt/keyrings/opentofu.gpg
+  when: ansible_os_family == "Debian"
+  become: yes
+
+- name: Download and process OpenTofu repository GPG key
+  ansible.builtin.shell: |
+    curl -fsSL https://packages.opentofu.org/opentofu/tofu/gpgkey | gpg --batch --yes --dearmor -o /etc/apt/keyrings/opentofu-repo.gpg
+    chmod 644 /etc/apt/keyrings/opentofu-repo.gpg
+    chown root:root /etc/apt/keyrings/opentofu-repo.gpg
+  when: ansible_os_family == "Debian"
+  become: yes
+
+- name: Add OpenTofu apt repository
+  ansible.builtin.copy:
+    content: |
+      deb [signed-by=/etc/apt/keyrings/opentofu.gpg,/etc/apt/keyrings/opentofu-repo.gpg] https://packages.opentofu.org/opentofu/tofu/any/ any main
+      deb-src [signed-by=/etc/apt/keyrings/opentofu.gpg,/etc/apt/keyrings/opentofu-repo.gpg] https://packages.opentofu.org/opentofu/tofu/any/ any main
+    dest: /etc/apt/sources.list.d/opentofu.list
+    owner: root
+    group: root
+    mode: '0644'
+  when: ansible_os_family == "Debian"
+  become: yes
+
+- name: Update apt cache after adding OpenTofu repository
+  ansible.builtin.apt:
+    update_cache: yes
+  when: ansible_os_family == "Debian"
+  become: yes
+
+- name: Install OpenTofu
+  ansible.builtin.apt:
+    name: tofu
+    state: present
+  when: ansible_os_family == "Debian"
+  become: yes
+
+- name: Verify OpenTofu installation
+  ansible.builtin.command:
+    cmd: tofu --version
+  register: tofu_version
+  changed_when: false
+  when: ansible_os_family == "Debian"
+
+- name: Display OpenTofu version
+  ansible.builtin.debug:
+    msg: "OpenTofu installed successfully: {{ tofu_version.stdout }}"
+  when: 
+    - ansible_os_family == "Debian"
+    - tofu_version is defined
+
